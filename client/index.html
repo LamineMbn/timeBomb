@@ -1,0 +1,28 @@
+<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+    const ctx = document.getElementById("ctx").getContext("2d");
+    ctx.font = '30px Arial';
+    
+    const socket = io();
+
+    socket.on('newPositions',function(data){
+        ctx.clearRect(0,0,500,500);
+
+        for(let i = 0 ; i < data.length; i++) {
+            ctx.fillText(data[i].number,data[i].x,data[i].y);
+        }
+    });
+
+    document.onkeydown = function(event){
+        socket.emit('keyPress',{inputId: event.key ,state:true});
+
+    }
+    document.onkeyup = function(event){
+        socket.emit('keyPress',{inputId: event.key ,state:false});
+    }
+
+
+</script>

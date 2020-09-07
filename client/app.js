@@ -1,203 +1,137 @@
 document.addEventListener('DOMContentLoaded', () => {
     const table = document.querySelector('.container');
     const startButton = document.querySelector('#start')
-    
-    const playerNumber = 4;
-    const defusingWireNumber = playerNumber
-    const explosionCardNumber = 1
-    const totalCardNumber = 40
+    let currentPlayer = {}
 
-    const socket = io()
+    // const playerNumber = 4;
+    // const defusingWireNumber = playerNumber
+    // const explosionCardNumber = 1
+    // const totalCardNumber = 40
 
-    let rules = [
-        {
-            playerNumber: 8,
-            blue: 5,
-            red: 3,
-            safeWire: 31
-        },
-        {
-            playerNumber: 7,
-            blue: 5,
-            red: 3,
-            safeWire: 27
-        },
-        {
-            playerNumber: 6,
-            blue: 4,
-            red: 2,
-            safeWire: 23
-        },
-        {
-            playerNumber: 5,
-            blue: 3,
-            red: 2,
-            safeWire: 19
-        }
-        ,
-        {
-            playerNumber: 4,
-            blue: 3,
-            red: 2,
-            safeWire: 15
-        }
-    ]
+    const socket = io.connect()
+    socket.emit('create', 'room');
 
-    let wireCards = [
-        {
-            type: 'safe',
-            img: 'img/cables/safe_wire.jpg'
-        },
-        {
-            type: 'defuse',
-            img: 'img/cables/defusing_wire.jpg'
-        },
-        {
-            type: 'bomb',
-            img: 'img/cables/bomb.jpg'
-        }
-    ]
-
-    let roles = [
-        {
-            type: 'blue',
-            img: 'img/roles/blue_card_1.jpg'
-        },
-        {
-            type: 'blue',
-            img: 'img/roles/blue_card_2.jpg'
-        },
-        {
-            type: 'blue',
-            img: 'img/roles/blue_card_3.jpg'
-        },
-        {
-            type: 'blue',
-            img: 'img/roles/blue_card_4.jpg'
-        },
-        {
-            type: 'blue',
-            img: 'img/roles/blue_card_5.jpg'
-        },
-        {
-            type: 'red',
-            img: 'img/roles/red_card_1.jpg'
-        },
-        {
-            type: 'red',
-            img: 'img/roles/red_card_2.jpg'
-        },
-        {
-            type: 'red',
-            img: 'img/roles/red_card_3.jpg'
-        }
-    ]
-
-    // startButton.addEventListener('click', () => {
-    //     socket.emit('start')
-    // })
-    
-    socket.on('init-game', gameData => {
-        let playerNumber = gameData.playerNumber
-        let shuffledRoleCards = gameData.roleCards
-        let wires = gameData.wires
-
-        const cardPerPlayer = Math.ceil(wires.length / playerNumber)
-
-        const wiresPerPlayers = new Array(wires.length)
-            .fill()
-            .map(_ => wires.splice(0, cardPerPlayer))
+    startButton.addEventListener('click', () => {
+        socket.emit('start')
     })
 
-    let rule = rules.filter(r => r.playerNumber === playerNumber)[0]
+    socket.on('init-game', gameData => {
+        initGame(gameData)
+    })
 
-    let blueCards = shuffle(roles.filter(role => role.type === 'blue')).slice(0, rule.blue)
-    let redCards = shuffle(roles.filter(role => role.type === 'red')).slice(0, rule.red)
-    let shuffledRoleCards = shuffle(blueCards.concat(redCards))
+    socket.on('player-info', player => {
+        currentPlayer = player
+        console.log(currentPlayer)
+    })
+    
+    socket.on('card-flipped', cardId => {
+        let card = document.getElementById(`${cardId}`)
+        flipCard(card)
+    })
 
-    let safeWires = Array(rule.safeWire).fill(wireCards.filter(wire => wire.type === 'safe')[0])
-    let defusingWires = Array(defusingWireNumber).fill(wireCards.filter(wire => wire.type === 'defuse')[0])
-    let bomb = Array(explosionCardNumber).fill(wireCards.filter(wire => wire.type === 'bomb')[0])
-
-    let wires = shuffleMultipleTimes(3, safeWires.concat(defusingWires, bomb))
-
-    const cardPerPlayer = Math.ceil(wires.length / playerNumber)
-
-    const wiresPerPlayers = new Array(wires.length)
-        .fill()
-        .map(_ => wires.splice(0, cardPerPlayer))
-
-
-    for (let i = 0; i < playerNumber; i++) {
-        const player = document.createElement('div');
-        player.className = 'player';
-        // player.style.backgroundColor = getRandomColor()
-        table.appendChild(player);
+    function clearTable(){
+        let child = table.lastChild
+        while (child) {
+            table.removeChild(child)
+            child = table.lastChild
+        }
     }
 
-    const players = document.querySelectorAll('.player')
+    function initGame(gameData) {
+        clearTable()
+        let players = gameData.players
+        
+        for (let player of players) {
+            const playerDiv = createBasicDivWithCssClass('player');
+            playerDiv.id = player.id
+            console.log(currentPlayer)
+            
+            if (player.id === currentPlayer.id){
+                playerDiv.classList.add('current-player')
+            }
+            
+            // Player Role
+            const playerRole = createPlayerRoleInDOM(player);
 
-    for (let i = 0; i < players.length; i++) {
-        let img = '/' + shuffledRoleCards[i].img;
+            // Player Hand
+            const playerHand = createPlayerHandInDOM(player);
 
+            playerDiv.appendChild(playerRole)
+            playerDiv.appendChild(playerHand)
+            table.appendChild(playerDiv);
+        }
+    }
+
+    function createPlayerRoleInDOM(player) {
+        let img = '/img/roles/back_card.jpg';
+        if(player.id === currentPlayer.id) img = '/' + player.role.img;
+        
         const playerRole = document.createElement('div');
         const role = document.createElement('img');
         role.src = img
         playerRole.className = 'player-role'
         playerRole.appendChild(role)
+        return playerRole;
+    }
 
-        const playerHand = document.createElement('div');
-        playerHand.className = 'player-hand'
+    function createPlayerHandInDOM(player) {
+        let wiresForCurrentPlayer = player.hand
+        const playerHand = createBasicDivWithCssClass('player-hand');
 
-        const wiresForCurrentPlayer = wiresPerPlayers[i]
         for (let j = 0; j < wiresForCurrentPlayer.length; j++) {
-            console.log(i)
+            const wire = createBasicImageWithSourceAndCss('/' + wiresForCurrentPlayer[j].img, 'wireImg');
 
-
-            const wire = document.createElement('img');
-            let wireImg = '/' + wiresForCurrentPlayer[j].img;
-            wire.src = wireImg
-            wire.className = 'wireImg'
-
-            const card = document.createElement('div');
-            card.className = 'card'
-
-            const backCard = document.createElement('div');
-            backCard.className = 'card-back'
+            const card = createBasicDivWithCssClass('card');
+            card.id = wiresForCurrentPlayer[j].id
             
-            const frontCard = document.createElement('div');
-            frontCard.className = `card-front ${wiresForCurrentPlayer[j].type}`
-            frontCard.hidden = 'true'
+            if(player.id !== currentPlayer.id){
+                card.addEventListener('click', flipCardListener(card))
+                card.classList.add('pointer')
+            }
+            
 
+            const backCard = createBasicDivWithCssClass('card-back');
+
+            const frontCard = createBasicDivWithCssClass('card-front');
             frontCard.appendChild(wire)
-
 
             card.appendChild(backCard)
             card.appendChild(frontCard)
             playerHand.appendChild(card)
         }
-
-
-        players[i].appendChild(playerRole)
-        players[i].appendChild(playerHand)
+        
+        return playerHand;
     }
 
-    const playerCards = document.querySelectorAll('.card')
-    playerCards.forEach(card => {
-        card.addEventListener('click',  function _func(e) {
-            console.log(e)
-            console.log(card.lastChild)
-            card.lastChild.hidden = false
+    function createBasicImageWithSourceAndCss(src, className){
+        const img = document.createElement('img');
+        img.src = src
+        img.className = className
+        return img
+    }
+    
+    function createBasicDivWithCssClass(className){
+        const div = document.createElement('div');
+        div.className = className
+        return div
+    }
+    
+    function flipCardListener(card) {
+        return function _func() {
+            flipCard(card, _func)
+            socket.emit('card-flip', card.id)
+        };
+    }
+
+    function flipCard(card, _func) {
+        if (!card.classList.contains('flip')) {
             card.classList.toggle('flip')
-            if(card.classList.contains('flip')){
-                card.style.cursor = 'default';
-                card.removeEventListener('click', _func)
-            }
-    })
+            card.style.cursor = 'default';
+        }
+        card.removeEventListener('click', _func)
+    }
 })
 
-
-})
 
 function getRandomColor() {
     const letters = '0123456789ABCDEF';
@@ -206,19 +140,4 @@ function getRandomColor() {
         color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
-}
-
-function shuffleMultipleTimes(n, a) {
-    for (let i = 0; i < n; i++) {
-        a = shuffle(a)
-    }
-    return a
-}
-
-function shuffle(a) {
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
 }

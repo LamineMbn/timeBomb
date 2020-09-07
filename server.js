@@ -5,6 +5,9 @@ const PORT = process.env.PORT || 9876
 const socketIo = require('socket.io')
 const app = express()
 const server = http.createServer(app)
+const {v4: uuidv4} = require('uuid');
+const _ = require('lodash')
+
 const io = socketIo(server)
 
 const maxPlayerNumber = 4
@@ -13,16 +16,19 @@ const rules = require('./conf/rules.js')
 const roles = require('./conf/roles.js')
 const wireCards = require('./conf/wire-cards.js')
 
-
 app.use(express.static(path.join(__dirname, "/client")))
 
 server.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`))
 
 const players = []
+let gameWireCards = []
+let shuffledRoleCards = {}
+let wireCardsFlipped = []
+
 let Entity = function () {
     let self = {
         id: "",
-        role: "",
+        role: {},
         hand: []
     }
     return self;
@@ -41,6 +47,17 @@ let Player = (id) => {
     return self
 }
 
+let Wire = (type, img) => {
+    let self = {}
+
+    self.type = type
+    self.img = img
+    self.id = uuidv4()
+
+    return self
+
+}
+
 io.on('connection', (socket) => {
     console.log(`There is ${io.engine.clientsCount} players`)
     if (io.engine.clientsCount > maxPlayerNumber) {
@@ -50,49 +67,44 @@ io.on('connection', (socket) => {
         return
     }
 
+
+    // socket.on('create', function(room) {
+    //     socket.join(room);
+    // });
+    socket.join('room');
     let player = Player(socket.id)
+    socket.emit('player-info', player)
     // if(players.length < 1) {
     console.log(`Player ${player.id} connected`)
     players.push(player)
+    console.log(players)
+
     // }
     // else console.log('Sorry to many players')
 
     socket.on('start', () => {
         let playerNumber = players.length
-        let defusingWireNumber = playerNumber
 
-        let rule = rules.filter(r => r.playerNumber === playerNumber)[0]
+        const rule = rules.filter(r => r.playerNumber === playerNumber)[0]
 
-        let blueCards = shuffle(roles.filter(role => role.type === 'blue')).slice(0, rule.blue)
-        let redCards = shuffle(roles.filter(role => role.type === 'red')).slice(0, rule.red)
-        let shuffledRoleCards = shuffle(blueCards.concat(redCards))
+        shuffledRoleCards = retrieveShuffledRoleCards(rule, playerNumber);
 
-        let safeWires = Array(rule.safeWire).fill(wireCards.filter(wire => wire.type === 'safe')[0])
-        let defusingWires = Array(defusingWireNumber).fill(wireCards.filter(wire => wire.type === 'defuse')[0])
-        let bomb = Array(explosionCardNumber).fill(wireCards.filter(wire => wire.type === 'bomb')[0])
 
-        let wires = shuffleMultipleTimes(3, safeWires.concat(defusingWires, bomb))
+        gameWireCards = retrieveWires(rule, playerNumber)
 
-        const cardPerPlayer = Math.ceil(wires.length / playerNumber)
+        console.log(gameWireCards)
 
-        const wiresPerPlayers = new Array(wires.length)
-            .fill()
-            .map(_ => wires.splice(0, cardPerPlayer))
-        
-        let gameData = {
-            playerNumber: playerNumber,
-            roleCards: shuffledRoleCards,
-            wires: wires,
-        }
-        
+        let gameData = retrieveDataGame(gameWireCards)
+
+        socket.in('room').emit('init-game', gameData)
         socket.emit('init-game', gameData)
-
-        console.log(wires)
-        console.log(wires.length)
     })
 
-    socket.on('affect-role', (role) => {
-        player.role = role
+    socket.on('card-flip', (cardId) => {
+        socket.to('room').emit('card-flipped', cardId)
+
+        setTimeout(checkForNextRound(socket, cardId), 1000)
+
     })
 
     socket.on('disconnect', () => {
@@ -101,8 +113,71 @@ io.on('connection', (socket) => {
     })
 
 
-
 })
+
+function checkForNextRound(socket, cardId) {
+    return function () {
+        wireCardsFlipped.push(cardId)
+        gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
+
+        if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
+            wireCardsFlipped = []
+            let gameData = retrieveDataGame(gameWireCards)
+            socket.in('room').emit('init-game', gameData)
+            socket.emit('init-game', gameData)
+        }
+    };
+}
+
+function retrieveDataGame(gameWireCards) {
+    const wiresPerPlayers = retrieveWiresPerPlayer(gameWireCards);
+
+
+    for (let i = 0; i < players.length; i++) {
+        players[i].role = shuffledRoleCards[i]
+        players[i].hand = wiresPerPlayers[i]
+    }
+
+    return {players: players}
+}
+
+function retrieveShuffledRoleCards(rule, playerNumber) {
+    let blueCards = shuffle(roles.filter(role => role.type === 'blue')).slice(0, rule.blue)
+    let redCards = shuffle(roles.filter(role => role.type === 'red')).slice(0, rule.red)
+    return shuffle(blueCards.concat(redCards));
+}
+
+function retrieveWires(rule, playerNumber) {
+    let defusingWireNumber = playerNumber
+
+    let safeWire = wireCards.filter(wire => wire.type === 'safe')[0]
+    let defusingWire = wireCards.filter(wire => wire.type === 'defuse')[0]
+    let bombWire = wireCards.filter(wire => wire.type === 'bomb')[0]
+
+    let safeWires = createWireList(rule.safeWire, safeWire)
+    let defusingWires = createWireList(defusingWireNumber, defusingWire)
+    let bomb = createWireList(explosionCardNumber, bombWire)
+
+    return shuffleMultipleTimes(3, safeWires.concat(defusingWires, bomb));
+}
+
+function retrieveWiresPerPlayer(pWires) {
+    let wires = Array.from(pWires)
+    const cardPerPlayer = Math.ceil(wires.length / players.length)
+
+    return new Array(wires.length)
+        .fill()
+        .map(_ => wires.splice(0, cardPerPlayer));
+}
+
+function createWireList(wireNumber, wireType) {
+    let wiresByType = []
+    _.range(wireNumber).forEach((value) => {
+        wiresByType[value] = Wire(wireType.type, wireType.img)
+    })
+
+    return wiresByType;
+}
 
 function shuffleMultipleTimes(n, a) {
     for (let i = 0; i < n; i++) {

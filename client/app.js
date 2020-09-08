@@ -29,6 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
         flipCard(card)
     })
 
+    socket.on('game-over', (bombId) => {
+        let bomb = document.getElementById(`${bombId}`)
+        bomb.classList.add('bomb')
+        
+        let cards = document.querySelectorAll(`.card`)
+        cards.forEach(card => card.removeEventListener('click', flipCardListener))
+    })
+
     function clearTable(){
         let child = table.lastChild
         while (child) {

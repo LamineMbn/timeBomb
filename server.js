@@ -24,6 +24,7 @@ const players = []
 let gameWireCards = []
 let shuffledRoleCards = {}
 let wireCardsFlipped = []
+let bombId = ""
 
 let Entity = function () {
     let self = {
@@ -87,7 +88,7 @@ io.on('connection', (socket) => {
 
         const rule = rules.filter(r => r.playerNumber === playerNumber)[0]
 
-        shuffledRoleCards = retrieveShuffledRoleCards(rule, playerNumber);
+        shuffledRoleCards = retrieveShuffledRoleCards(rule);
 
 
         gameWireCards = retrieveWires(rule, playerNumber)
@@ -117,6 +118,10 @@ io.on('connection', (socket) => {
 
 function checkForNextRound(socket, cardId) {
     return function () {
+        if(gameIsOver(cardId)) {
+            socket.emit('game-over', cardId)
+            return
+        }
         wireCardsFlipped.push(cardId)
         gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
 
@@ -141,7 +146,7 @@ function retrieveDataGame(gameWireCards) {
     return {players: players}
 }
 
-function retrieveShuffledRoleCards(rule, playerNumber) {
+function retrieveShuffledRoleCards(rule) {
     let blueCards = shuffle(roles.filter(role => role.type === 'blue')).slice(0, rule.blue)
     let redCards = shuffle(roles.filter(role => role.type === 'red')).slice(0, rule.red)
     return shuffle(blueCards.concat(redCards));
@@ -157,6 +162,9 @@ function retrieveWires(rule, playerNumber) {
     let safeWires = createWireList(rule.safeWire, safeWire)
     let defusingWires = createWireList(defusingWireNumber, defusingWire)
     let bomb = createWireList(explosionCardNumber, bombWire)
+    
+    // Bomb info
+    bombId = bomb[0].id
 
     return shuffleMultipleTimes(3, safeWires.concat(defusingWires, bomb));
 }
@@ -192,4 +200,8 @@ function shuffle(a) {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+}
+
+function gameIsOver(cardId){
+    return cardId === bombId
 }

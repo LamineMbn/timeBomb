@@ -25,6 +25,8 @@ let gameWireCards = []
 let shuffledRoleCards = {}
 let wireCardsFlipped = []
 let bombId = ""
+let defusingWiresIds = []
+let defusingWiresFound = 0
 
 let Entity = function () {
     let self = {
@@ -40,6 +42,8 @@ let Player = (id) => {
     let self = new Entity()
 
     self.id = id
+    self.turn = false
+    self.protected = false
 
     self.addRole = (role) => {
         self.role = role
@@ -88,12 +92,9 @@ io.on('connection', (socket) => {
 
         const rule = rules.filter(r => r.playerNumber === playerNumber)[0]
 
-        shuffledRoleCards = retrieveShuffledRoleCards(rule);
+        computeInitialData(playerNumber, rule)
 
-
-        gameWireCards = retrieveWires(rule, playerNumber)
-
-        console.log(gameWireCards)
+        console.log(players)
 
         let gameData = retrieveDataGame(gameWireCards)
 
@@ -101,10 +102,17 @@ io.on('connection', (socket) => {
         socket.emit('init-game', gameData)
     })
 
-    socket.on('card-flip', (cardId) => {
+    socket.on('card-flip', (choice) => {
+        const {currentPlayer, nextPlayer: selectedPlayer, cardId} = choice
         socket.to('room').emit('card-flipped', cardId)
 
-        setTimeout(checkForNextRound(socket, cardId), 1000)
+        if (defusingWiresIds.includes(cardId)) incrementNumberOfDefusingWiresFound()
+
+        switchPlayers(currentPlayer, selectedPlayer)
+        console.log(choice)
+        console.log(players)
+
+        setTimeout(checkForNextRound, 800, socket, cardId)
 
     })
 
@@ -116,22 +124,78 @@ io.on('connection', (socket) => {
 
 })
 
-function checkForNextRound(socket, cardId) {
-    return function () {
-        if(gameIsOver(cardId)) {
-            socket.emit('game-over', cardId)
-            return
-        }
-        wireCardsFlipped.push(cardId)
-        gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
+function computeInitialData(playerNumber, rule) {
 
-        if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
-            wireCardsFlipped = []
-            let gameData = retrieveDataGame(gameWireCards)
-            socket.in('room').emit('init-game', gameData)
-            socket.emit('init-game', gameData)
-        }
-    };
+    selectStartingPlayerRandomly()
+
+    defusingWiresFound = 0
+
+    shuffledRoleCards = retrieveShuffledRoleCards(rule);
+
+    gameWireCards = retrieveWires(rule, playerNumber)
+
+    bombId = retrieveBombId(gameWireCards)
+    console.log(bombId)
+
+    defusingWiresIds = retrieveDefusingWiresId(gameWireCards)
+
+}
+
+function switchPlayers(currentPlayerId, nextPlayerId) {
+    resetProtections()
+    players.filter(player => player.id === currentPlayerId).map(togglePlayerTurnProtection)
+    players.filter(player => player.id === nextPlayerId).map(togglePlayerTurn)
+}
+
+function togglePlayerTurnProtection(player) {
+    player.protected = !player.protected
+    player.turn = !player.turn
+}
+
+
+function togglePlayerTurn(player) {
+    player.turn = !player.turn
+}
+
+function selectStartingPlayerRandomly() {
+    resetTurns()
+    resetProtections()
+    retrieveRandomPlayer().turn = true
+}
+
+function resetTurns() {
+    players.forEach(player => player.turn = false)
+}
+
+function resetProtections() {
+    players.forEach(player => player.protected = false)
+}
+
+function retrieveRandomPlayer() {
+    return players[Math.floor(Math.random() * players.length)];
+}
+
+function checkForNextRound(socket, cardId) {
+    if (gameIsOver(cardId)) {
+        console.log(cardId)
+        socket.in('room').emit('game-over', bombId)
+        socket.emit('game-over', bombId)
+        return
+    }
+
+    wireCardsFlipped.push(cardId)
+    gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
+
+    if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
+        wireCardsFlipped = []
+        let gameData = retrieveDataGame(gameWireCards)
+        socket.in('room').emit('init-game', gameData)
+        socket.emit('init-game', gameData)
+    }
+}
+
+function incrementNumberOfDefusingWiresFound() {
+    defusingWiresFound++
 }
 
 function retrieveDataGame(gameWireCards) {
@@ -155,18 +219,27 @@ function retrieveShuffledRoleCards(rule) {
 function retrieveWires(rule, playerNumber) {
     let defusingWireNumber = playerNumber
 
-    let safeWire = wireCards.filter(wire => wire.type === 'safe')[0]
-    let defusingWire = wireCards.filter(wire => wire.type === 'defuse')[0]
-    let bombWire = wireCards.filter(wire => wire.type === 'bomb')[0]
+    let safeWire = retrieveWiresByType(wireCards, 'safe')[0]
+    let defusingWire = retrieveWiresByType(wireCards, 'defuse')[0]
+    let bombWire = retrieveWiresByType(wireCards, 'bomb')[0]
 
     let safeWires = createWireList(rule.safeWire, safeWire)
     let defusingWires = createWireList(defusingWireNumber, defusingWire)
     let bomb = createWireList(explosionCardNumber, bombWire)
-    
-    // Bomb info
-    bombId = bomb[0].id
 
     return shuffleMultipleTimes(3, safeWires.concat(defusingWires, bomb));
+}
+
+function retrieveWiresByType(wires, type) {
+    return wires.filter(wire => wire.type === type)
+}
+
+function retrieveBombId(wires) {
+    return retrieveWiresByType(wires, 'bomb')[0].id
+}
+
+function retrieveDefusingWiresId(wires) {
+    return retrieveWiresByType(wires, 'defuse').map(defuse => defuse.id)
 }
 
 function retrieveWiresPerPlayer(pWires) {
@@ -202,6 +275,16 @@ function shuffle(a) {
     return a;
 }
 
-function gameIsOver(cardId){
+function gameIsOver(cardId) {
+    // return isBomb(cardId) || bombDefused();
+    return bombDefused();
+}
+
+function isBomb(cardId) {
     return cardId === bombId
+}
+
+function bombDefused() {
+    console.log(`${defusingWiresFound}/${defusingWiresIds.length} wires found`)
+    return defusingWiresFound === defusingWiresIds.length
 }

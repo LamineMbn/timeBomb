@@ -21,12 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('player-info', player => {
         currentPlayer = player
-        console.log(currentPlayer)
     })
     
     socket.on('card-flipped', cardId => {
         let card = document.getElementById(`${cardId}`)
-        flipCard(card)
+        try {
+            card.dispatchEvent(new Event('click'))
+        } catch (e) {
+            flipCard(card)
+        }
+        
+        
     })
 
     socket.on('game-over', (bombId) => {
@@ -34,8 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
         bomb.classList.add('bomb')
         
         let cards = document.querySelectorAll(`.card`)
-        cards.forEach(card => card.removeEventListener('click', flipCardListener))
-    })
+
+        setTimeout(function () {
+            cards.forEach(card => flipCard(card))
+        }, 500)
+        
+    })    
 
     function clearTable(){
         let child = table.lastChild
@@ -52,9 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let player of players) {
             const playerDiv = createBasicDivWithCssClass('player');
             playerDiv.id = player.id
-            console.log(currentPlayer)
             
-            if (player.id === currentPlayer.id){
+            if (isCurrentPlayer(player)){
                 playerDiv.classList.add('current-player')
             }
             
@@ -70,9 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     function createPlayerRoleInDOM(player) {
         let img = '/img/roles/back_card.jpg';
-        if(player.id === currentPlayer.id) img = '/' + player.role.img;
+        if(isCurrentPlayer(player)) img = '/' + player.role.img;
         
         const playerRole = document.createElement('div');
         const role = document.createElement('img');
@@ -92,8 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = createBasicDivWithCssClass('card');
             card.id = wiresForCurrentPlayer[j].id
             
-            if(player.id !== currentPlayer.id){
-                card.addEventListener('click', flipCardListener(card))
+            if(isNotCurrentPlayer(player)){
+                card.addEventListener('click', flipCardListener(card), {once : true})
                 card.classList.add('pointer')
             }
             
@@ -127,7 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function flipCardListener(card) {
         return function _func() {
             flipCard(card, _func)
-            socket.emit('card-flip', card.id)
+            
+            let choice = {
+                currentPlayer: currentPlayer.id,
+                nextPlayer: retrieveSelectedPlayer(card).id,
+                cardId: card.id
+            }
+            
+            console.log(choice)
+            
+            socket.emit('card-flip', choice)
         };
     }
 
@@ -137,6 +155,21 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.cursor = 'default';
         }
         card.removeEventListener('click', _func)
+    }
+
+    function retrieveSelectedPlayer(cardDiv) {
+        for ( ; cardDiv && cardDiv !== document; cardDiv = cardDiv.parentNode ) {
+            if ( cardDiv.matches( '.player' ) ) return cardDiv;
+        }
+        return null;
+    };
+
+    function isNotCurrentPlayer(player) {
+        return !isCurrentPlayer(player);
+    }
+
+    function isCurrentPlayer(player) {
+        return player.id === currentPlayer.id;
     }
 })
 

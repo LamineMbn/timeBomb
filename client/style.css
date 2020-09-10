@@ -107,3 +107,9 @@ body {
 
 .wireImg.hidden {
   display: none; }
+
+.bomb {
+  box-shadow: 0 0 5px #51cbee;
+  padding: 3px 0px 3px 3px;
+  margin: 5px 1px 3px 0px;
+  border: 8px solid red; }

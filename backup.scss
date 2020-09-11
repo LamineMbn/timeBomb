@@ -18,51 +18,46 @@ body {
   width: 100%;
 }
 
-.layout {
-  justify-content: center;
-  flex-direction: column;
-  position: relative;
-  display: flex;
-}
-
 .player-hand {
   display: flex;
   flex-direction: row;
   justify-content: center;
+  //flex-grow: 1;
+  //background-color: hsl(200, 100%, 50%);
+  //flex: 5;
   height: 100%;
-  column-gap: 1vmin;
-  /* width: 100%; */
-  max-width: 120vmin;
-  width: 120vmin;
-  /* margin-right: 3vmin;*/
+  width: 100%;
+  column-gap: 1rem;
 }
 
 .player {
-  position: relative;
   margin: 2vmin;
   display: flex;
-  /* flex-direction: row; */
-  justify-content: space-between;
-  /* background-size: 100%; */
-  /* align-items: flex-start; */
-  width: 100%;
-  height: 54vmin;
-  // height: 30rem;
+  flex-direction: row;
+  justify-content: center;
+  //background-color: hsl(200, 100%, 50%);
+  background-size: 100%;
+  //grid-template-rows: repeat(8, 4.6vmin);
+  //grid-template-columns: repeat(2, 40vmin);
+  align-items: flex-start;
+  width: 80%;
+  height: 30em;
 }
 
 .current-player {
   box-shadow: 0 0 5px rgba(81, 203, 238, 1);
   padding: 3px 0px 3px 3px;
-  border: 5px solid rgba(81, 203, 238, 1);
+  margin: 5px 1px 3px 0px;
+  border: 8px solid rgba(81, 203, 238, 1);
 }
 
 .player-role {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
+  //flex: 2;
   height: 100%;
-  max-width: 48vmin;
-  width: 48vmin;
+  width: 40%;
 }
 
 .player-role > img {
@@ -70,41 +65,10 @@ body {
   height: 100%;
 }
 
-.miscCard{
-  display: flex;
-  flex-direction: column;
-  width: 20vmin;
-}
-
-.wireCutter{
-  display: none;
-}
-
-.wireCutter.active {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  background-color: #63873e;
-}
-
-.protection{
-  display: none;
-}
-
-.protection.active {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  background-image: url("img/shield.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
-}
-
 .card {
   display: flex;
   flex-wrap: wrap;
-  width: 24vmin;
+  width: 20%;
   height: 100%;
   //position: absolute;
   -webkit-transition: -webkit-transform 1s;
@@ -116,30 +80,30 @@ body {
   -o-transform-style: preserve-3d;
   transform-style: preserve-3d;
   -webkit-transform-origin: 50% 50%;
-  //border: 1px solid grey;
-  //border-radius: 5%;
-  //margin-left: 0.2rem;
-  //flex-grow: 1;
+  border: 1px solid grey;
+  border-radius: 5%;
+  margin-left: 0.2rem;
+//flex-grow: 1;
 }
 
 .pointer {
-  cursor: url('/img/wire_cutter_cursor.png'), auto;
+  cursor: pointer;
 }
 
 
 .card-back {
   background-color: #964d24;
-  padding: 1.1vmin;
+  padding:10px;
   background-clip: content-box;
-  box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75);
+  box-shadow: 10px 10px 5px 0px rgba(0,0,0,0.75);
 }
 
 .card-front {
   background-color: red;
-  -webkit-transform: rotateY(180deg);
-  -moz-transform: rotateY(180deg);
-  -o-transform: rotateY(180deg);
-  transform: rotateY(180deg);
+  -webkit-transform: rotateY( 180deg );
+  -moz-transform: rotateY( 180deg );
+  -o-transform: rotateY( 180deg );
+  transform: rotateY( 180deg );
 
 }
 
@@ -152,8 +116,9 @@ body {
   -moz-backface-visibility: hidden;
   -o-backface-visibility: hidden;
   backface-visibility: hidden;
-  border-radius: 3vmin;
-  box-shadow: 0.3vmin 0.3vmin 1.6vmin 0vmin rgba(0, 0, 0, 0.75);
+  border-radius: 5%;
+  box-shadow: 0.2rem 0.2rem 1.2rem 0rem rgba(0,0,0,0.75);
+
 }
 
 //.card-front  > img {
@@ -163,11 +128,12 @@ body {
 //}
 
 
+
 .card.flip {
-  -webkit-transform: rotateY(180deg);
-  -moz-transform: rotateY(180deg);
-  -o-transform: rotateY(180deg);
-  transform: rotateY(180deg);
+  -webkit-transform: rotateY( 180deg );
+  -moz-transform: rotateY( 180deg );
+  -o-transform: rotateY( 180deg );
+  transform: rotateY( 180deg );
 }
 
 .wireImg {
@@ -182,8 +148,8 @@ body {
 
 .bomb {
   box-shadow: 0 0 5px rgba(81, 203, 238, 1);
-  //padding: 3px 0px 3px 3px;
-  //margin: 5px 1px 3px 0px;
+  padding: 3px 0px 3px 3px;
+  margin: 5px 1px 3px 0px;
   border: 8px solid red;
 }
 

@@ -71,8 +71,6 @@ io.on('connection', (socket) => {
         console.log('Disconnected...')
         return
     }
-
-
     // socket.on('create', function(room) {
     //     socket.join(room);
     // });
@@ -185,6 +183,9 @@ function checkForNextRound(socket, cardId) {
 
     wireCardsFlipped.push(cardId)
     gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
+
+    socket.in('room').emit('next-player-turn', players)
+    socket.emit('next-player-turn', players)
 
     if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
         wireCardsFlipped = []

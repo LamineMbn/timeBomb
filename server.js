@@ -204,7 +204,6 @@ function checkForNextRound(socket, dataForNextRound) {
     wireCardsFlipped.push(cardId)
     gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
 
-    // TODO I should send current and next player info
     socket.in('room').emit('next-player-turn', dataForNextRound)
     socket.emit('next-player-turn', dataForNextRound)
 

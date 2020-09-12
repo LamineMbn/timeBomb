@@ -54,9 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let cards = [...document.querySelectorAll(`.card`)]
 
-        if(previousPlayerId === currentPlayer.id) removeEventListenerOnCardForSpecificPlayer(cards);
+        if(isNotCurrentPlayerTurnAnymore(previousPlayerId)) removeEventListenerOnCardForSpecificPlayer(cards);
 
-        if(nextPlayerId === currentPlayer.id) addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, nextPlayerId);
+        if(isCurrentPlayerTurn(nextPlayerId)) addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, nextPlayerId);
     })
 
     socket.on('game-over', (bombId) => {
@@ -181,12 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
             card.id = wiresForCurrentPlayer[j].id
 
 
-            // if(isNotCurrentPlayer(player)){
-            //     card.addEventListener('click', flipCardListener, {once : true})
-            //     card.classList.add('pointer')
-            // }
-
-
             const backCard = createBasicDivWithCssClass('card-back');
 
             const frontCard = createBasicDivWithCssClass('card-front');
@@ -198,34 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return playerHand;
-    }
-
-    function addEvent(node, event, handler, capture) {
-        if (!(node in _eventHandlers)) {
-            // _eventHandlers stores references to nodes
-            _eventHandlers[node] = {};
-        }
-        if (!(event in _eventHandlers[node])) {
-            // each entry contains another entry for each event type
-            _eventHandlers[node][event] = [];
-        }
-        // capture reference
-        _eventHandlers[node][event].push([handler, capture]);
-        node.addEventListener(event, handler, capture);
-    }
-
-
-    function removeAllEvents(node, event) {
-        if (node in _eventHandlers) {
-            var handlers = _eventHandlers[node];
-            if (event in handlers) {
-                var eventHandlers = handlers[event];
-                for (var i = eventHandlers.length; i--;) {
-                    var handler = eventHandlers[i];
-                    node.removeEventListener(event, handler[0], handler[1]);
-                }
-            }
-        }
     }
 
     function createBasicImageWithSourceAndCss(src, className) {
@@ -273,12 +239,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     };
 
-    function isNotCurrentPlayer(player) {
-        return !isCurrentPlayer(player);
-    }
-
     function isCurrentPlayer(player) {
         return player.id === currentPlayer.id;
+    }
+
+    function isCurrentPlayerTurn(nextPlayerId) {
+        return nextPlayerId === currentPlayer.id;
+    }
+
+    function isNotCurrentPlayerTurnAnymore(previousPlayerId) {
+        return previousPlayerId === currentPlayer.id;
     }
 
     function isPlayerTurn(player) {
@@ -289,13 +259,3 @@ document.addEventListener('DOMContentLoaded', () => {
         return player && player.protected
     }
 })
-
-
-function getRandomColor() {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-}

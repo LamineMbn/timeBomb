@@ -95,6 +95,7 @@ io.on('connection', (socket) => {
         console.log(players)
 
         let gameData = retrieveDataGame(gameWireCards)
+        emitPlayersInformations(socket, gameData.players);
 
         socket.in('room').emit('init-game', gameData)
         socket.emit('init-game', gameData)
@@ -106,11 +107,23 @@ io.on('connection', (socket) => {
 
         if (defusingWiresIds.includes(cardId)) incrementNumberOfDefusingWiresFound()
 
+        let previousProtectedPlayer = players.filter(player => player.protected)[0]
+        
         switchPlayers(currentPlayer, selectedPlayer)
-        console.log(choice)
-        console.log(players)
+        
+        emitPlayersInformations(socket, players)
+        
+        let dataForNextRound = {
+            previousPlayerId : currentPlayer,
+            nextPlayerId : selectedPlayer,
+            cardId: cardId,
+            protectedPlayerId: (previousProtectedPlayer) ? previousProtectedPlayer.id : currentPlayer
+        }
+        
+        console.log(dataForNextRound)
+        
 
-        setTimeout(checkForNextRound, 800, socket, cardId)
+        setTimeout(checkForNextRound, 800, socket, dataForNextRound)
 
     })
 
@@ -121,6 +134,12 @@ io.on('connection', (socket) => {
 
 
 })
+
+function emitPlayersInformations(socket, players) {
+    socket.in('room').emit('all-player-info', players)
+    socket.emit('all-player-info', players)
+}
+
 
 function computeInitialData(playerNumber, rule) {
 
@@ -173,7 +192,8 @@ function retrieveRandomPlayer() {
     return players[Math.floor(Math.random() * players.length)];
 }
 
-function checkForNextRound(socket, cardId) {
+function checkForNextRound(socket, dataForNextRound) {
+    let cardId = dataForNextRound.cardId
     if (gameIsOver(cardId)) {
         console.log(cardId)
         socket.in('room').emit('game-over', bombId)
@@ -184,8 +204,9 @@ function checkForNextRound(socket, cardId) {
     wireCardsFlipped.push(cardId)
     gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
 
-    socket.in('room').emit('next-player-turn', players)
-    socket.emit('next-player-turn', players)
+    // TODO I should send current and next player info
+    socket.in('room').emit('next-player-turn', dataForNextRound)
+    socket.emit('next-player-turn', dataForNextRound)
 
     if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
         wireCardsFlipped = []

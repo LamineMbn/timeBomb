@@ -23,44 +23,76 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('player-info', player => {
         currentPlayer = player
     })
-    
+
+    socket.on('all-player-info', players => {
+        currentPlayer = players.filter(player => player.id === currentPlayer.id)[0]
+    })
+
+
     socket.on('card-flipped', cardId => {
         let card = document.getElementById(`${cardId}`)
         flipCard(card)
     })
-    
-    socket.on('next-player-turn', players => {
-        players.forEach(player => {
-            let playerDiv = document.querySelector(`#${player.id}`)
-            const wireCutter = playerDiv.querySelector('.wireCutter')
-            const protection = playerDiv.querySelector('.protection')
-            
-            if(wireCutter.classList.contains('active')) wireCutter.classList.remove('active')
-            if(protection.classList.contains('active')) protection.classList.remove('active')
-            
-            if (isPlayerTurn(player)){
-                wireCutter.classList.toggle('active')
-            }
 
-            if (playerIsProtected(player)){
-                protection.classList.toggle('active')
-            }
-        })
+    socket.on('next-player-turn', dataForNextRound => {
+        let {previousPlayerId, nextPlayerId, protectedPlayerId} = dataForNextRound
+        let previousPlayerDiv = document.getElementById(`${previousPlayerId}`)
+        let nextPlayerDiv = document.getElementById(`${nextPlayerId}`)
+        let protectedPlayerDiv = document.getElementById(`${protectedPlayerId}`)
+        
+        const previousWireCutter = previousPlayerDiv.querySelector('.wireCutter')
+        const nextPlayerWireCutter = nextPlayerDiv.querySelector('.wireCutter')
+        
+        const previousPlayerProtection = previousPlayerDiv.querySelector('.protection')
+        const protectedPlayerProtection = protectedPlayerDiv.querySelector('.protection')
+
+        previousWireCutter.classList.remove('active')
+        protectedPlayerProtection.classList.remove('active')
+        
+        previousPlayerProtection.classList.toggle('active')
+        nextPlayerWireCutter.classList.toggle('active')
+
+        let cards = [...document.querySelectorAll(`.card`)]
+
+        if(previousPlayerId === currentPlayer.id) removeEventListenerOnCardForSpecificPlayer(cards);
+
+        if(nextPlayerId === currentPlayer.id) addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, nextPlayerId);
     })
 
     socket.on('game-over', (bombId) => {
         let bomb = document.getElementById(`${bombId}`)
         bomb.classList.add('bomb')
-        
+
         let cards = document.querySelectorAll(`.card`)
 
         setTimeout(function () {
             cards.forEach(card => flipCard(card))
         }, 500)
-        
-    })    
 
-    function clearTable(){
+    })
+
+    function addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, currentPlayerId) {
+        cards.filter(previousAndCurrentPlayerCards(previousPlayerId, currentPlayerId))
+            .forEach(card => {
+                console.log(card)
+                card.addEventListener('click', flipCardListener, {once: true})
+                card.classList.add('pointer')
+            })
+    }
+
+    function previousAndCurrentPlayerCards(previousPlayerId, currentPlayerId) {
+        return card => ![previousPlayerId, currentPlayerId].includes(card.parentElement.parentElement.id);
+    }
+
+    function removeEventListenerOnCardForSpecificPlayer(cards) {
+        cards
+            .forEach(card => {
+                card.removeEventListener('click', flipCardListener, {once: true})
+                card.classList.remove('pointer')
+            })
+    }
+
+    function clearTable() {
         let child = table.lastChild
         while (child) {
             table.removeChild(child)
@@ -68,36 +100,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // TODO UPDATE ME
+    function updateEventListeners() {
+        console.log(currentPlayer)
+        let cards = [...document.querySelectorAll(`.card`)]
+        if (isPlayerTurn(currentPlayer)) {
+
+            console.log(cards)
+            cards.filter(card => card.parentElement.parentElement.id !== currentPlayer.id)
+                .forEach(card => {
+                    console.log(card)
+                    card.addEventListener('click', flipCardListener, {once: true})
+                    card.classList.add('pointer')
+                })
+        }
+    }
+
     function initGame(gameData) {
         clearTable()
         let players = gameData.players
-        
+
         for (let player of players) {
             const playerDiv = createBasicDivWithCssClass('player');
             playerDiv.id = player.id
-            
+
             // Player Role
             const playerRole = createPlayerRoleInDOM(player);
 
             // Player Hand
             const playerHand = createPlayerHandInDOM(player);
-            
+
             const miscCardDiv = createBasicDivWithCssClass('miscCard');
             const wireCutter = createBasicDivWithCssClass('wireCutter');
             const protection = createBasicDivWithCssClass('protection');
-            
+
             miscCardDiv.appendChild(wireCutter)
             miscCardDiv.appendChild(protection)
 
-            if (isCurrentPlayer(player)){
+            if (isCurrentPlayer(player)) {
                 playerDiv.classList.add('current-player')
             }
 
-            if (isPlayerTurn(player)){
+            if (isPlayerTurn(player)) {
                 wireCutter.classList.toggle('active')
             }
 
-            if (playerIsProtected(player)){
+            if (playerIsProtected(player)) {
                 protection.classList.toggle('active')
             }
 
@@ -106,13 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
             playerDiv.appendChild(playerHand)
             table.appendChild(playerDiv);
         }
+        updateEventListeners();
     }
 
 
     function createPlayerRoleInDOM(player) {
         let img = '/img/roles/back_card.jpg';
-        if(isCurrentPlayer(player)) img = '/' + player.role.img;
-        
+        if (isCurrentPlayer(player)) img = '/' + player.role.img;
+
         const playerRole = document.createElement('div');
         const role = document.createElement('img');
         role.src = img
@@ -131,12 +180,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = createBasicDivWithCssClass('card');
             card.id = wiresForCurrentPlayer[j].id
 
-            
-            if(isNotCurrentPlayer(player)){
-                card.addEventListener('click', flipCardListener, {once : true})
-                card.classList.add('pointer')
-            }
-            
+
+            // if(isNotCurrentPlayer(player)){
+            //     card.addEventListener('click', flipCardListener, {once : true})
+            //     card.classList.add('pointer')
+            // }
+
 
             const backCard = createBasicDivWithCssClass('card-back');
 
@@ -147,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.appendChild(frontCard)
             playerHand.appendChild(card)
         }
-        
+
         return playerHand;
     }
 
@@ -179,14 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function createBasicImageWithSourceAndCss(src, className){
+    function createBasicImageWithSourceAndCss(src, className) {
         const img = document.createElement('img');
         img.src = src
         img.className = className
         return img
     }
-    
-    function createBasicDivWithCssClass(className){
+
+    function createBasicDivWithCssClass(className) {
         const div = document.createElement('div');
         div.className = className
         return div
@@ -214,12 +263,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         card.removeEventListener('click', flipCardListener)
-        
+
     }
 
     function retrieveSelectedPlayer(cardDiv) {
-        for ( ; cardDiv && cardDiv !== document; cardDiv = cardDiv.parentNode ) {
-            if ( cardDiv.matches( '.player' ) ) return cardDiv;
+        for (; cardDiv && cardDiv !== document; cardDiv = cardDiv.parentNode) {
+            if (cardDiv.matches('.player')) return cardDiv;
         }
         return null;
     };
@@ -231,13 +280,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function isCurrentPlayer(player) {
         return player.id === currentPlayer.id;
     }
-    
+
     function isPlayerTurn(player) {
-        return player.turn
+        return player && player.turn
     }
 
     function playerIsProtected(player) {
-        return player.protected
+        return player && player.protected
     }
 })
 

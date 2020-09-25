@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const table = document.querySelector('.layout');
     const startButton = document.querySelector('#start')
     let currentPlayer = {}
-    let _eventHandlers = {};
 
     // const playerNumber = 4;
     // const defusingWireNumber = playerNumber
@@ -10,7 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // const totalCardNumber = 40
 
     const socket = io.connect()
-    socket.emit('create', 'room');
+    let room  =  window.location.pathname.substr(1);
+    console.log(room)
+
+    socket.on('connect', function() {
+        socket.emit('create', room);
+    });
+    
 
     startButton.addEventListener('click', () => {
         socket.emit('start')
@@ -74,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, currentPlayerId) {
         cards.filter(previousAndCurrentPlayerCards(previousPlayerId, currentPlayerId))
             .forEach(card => {
-                console.log(card)
                 card.addEventListener('click', flipCardListener, {once: true})
                 card.classList.add('pointer')
             })
@@ -119,10 +123,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function initGame(gameData) {
         clearTable()
         let players = gameData.players
+        
+        let i = 0;
 
         for (let player of players) {
             const playerDiv = createBasicDivWithCssClass('player');
             playerDiv.id = player.id
+
+            // let radius = '30em', //distance from center
+            //     start = -90, //shift start from 0
+            //     slice = 360 / players.length,
+            //     rotate = slice * i + start,
+            //     rotateReverse = rotate * -1;
+            //
+            // playerDiv.style.transform = 'rotate(' + rotate + 'deg) translate(' + radius + ') rotate(' + rotateReverse + 'deg)'
+            // i++
 
             // Player Role
             const playerRole = createPlayerRoleInDOM(player);
@@ -137,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             miscCardDiv.appendChild(wireCutter)
             miscCardDiv.appendChild(protection)
 
-            if (isCurrentPlayer(player)) {
+            if (isCurrentPlayer(player.id)) {
                 playerDiv.classList.add('current-player')
             }
 
@@ -160,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createPlayerRoleInDOM(player) {
         let img = '/img/roles/back_card.jpg';
-        if (isCurrentPlayer(player)) img = '/' + player.role.img;
+        if (isCurrentPlayer(player.id)) img = '/' + player.role.img;
 
         const playerRole = document.createElement('div');
         const role = document.createElement('img');
@@ -239,16 +254,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     };
 
-    function isCurrentPlayer(player) {
-        return player.id === currentPlayer.id;
-    }
-
     function isCurrentPlayerTurn(nextPlayerId) {
-        return nextPlayerId === currentPlayer.id;
+        return isCurrentPlayer(nextPlayerId);
     }
 
     function isNotCurrentPlayerTurnAnymore(previousPlayerId) {
-        return previousPlayerId === currentPlayer.id;
+        return isCurrentPlayer(previousPlayerId);
+    }
+
+    function isCurrentPlayer(playerId) {
+        return playerId === currentPlayer.id;
     }
 
     function isPlayerTurn(player) {

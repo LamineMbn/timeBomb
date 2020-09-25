@@ -10,16 +10,24 @@ const _ = require('lodash')
 
 const io = socketIo(server)
 
-const maxPlayerNumber = 4
+app.use(express.static(path.join(__dirname, "/client")))
+
+app.get('/:id', ((req, res) => {
+    res.sendFile(path.join(__dirname + '/client/timeBomb.html'))
+}))
+
+server.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`))
+
+
 const explosionCardNumber = 1
 const rules = require('./conf/rules.js')
 const roles = require('./conf/roles.js')
 const wireCards = require('./conf/wire-cards.js')
 
-app.use(express.static(path.join(__dirname, "/client")))
+const maxPlayerNumber = _.maxBy(rules, rule => rule.playerNumber).playerNumber
+const minPlayerNumber = _.minBy(rules, rule => rule.playerNumber).playerNumber
 
-server.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`))
-
+let playersInRoom = 0
 const players = []
 let gameWireCards = []
 let shuffledRoleCards = {}
@@ -27,6 +35,8 @@ let wireCardsFlipped = []
 let bombId = ""
 let defusingWiresIds = []
 let defusingWiresFound = 0
+
+// TODO highlight undiscovered defusing cable when game is over
 
 let Entity = function () {
     let self = {
@@ -42,6 +52,7 @@ let Player = (id) => {
     let self = new Entity()
 
     self.id = id
+    self.name = ""
     self.turn = false
     self.protected = false
 
@@ -60,50 +71,90 @@ let Wire = (type, img) => {
     self.id = uuidv4()
 
     return self
+}
 
+
+function notEnoughPlayers(room){
+    return retievePlayersInRoom(room) < minPlayerNumber
+}
+
+function tooMuchPlayers(room){
+    return retievePlayersInRoom(room) > maxPlayerNumber
+}
+
+let room = ""
+
+
+function retievePlayersInRoom(roomToJoin) {
+    return io.sockets.adapter.rooms[roomToJoin] ? io.sockets.adapter.rooms[roomToJoin].length : 0;
 }
 
 io.on('connection', (socket) => {
-    console.log(`There is ${io.engine.clientsCount} players`)
-    if (io.engine.clientsCount > maxPlayerNumber) {
-        console.log('Sorry to many players')
-        socket.disconnect()
-        console.log('Disconnected...')
-        return
-    }
-    // socket.on('create', function(room) {
-    //     socket.join(room);
-    // });
-    socket.join('room');
+
     let player = Player(socket.id)
-    socket.emit('player-info', player)
-    // if(players.length < 1) {
-    console.log(`Player ${player.id} connected`)
-    players.push(player)
-    console.log(players)
+    
+    socket.on('create', function(roomToJoin) {
 
-    // }
-    // else console.log('Sorry to many players')
+        socket.join(roomToJoin);
+        
+        
+        
+        socket.emit('player-info', player)
+        console.log(`Player ${player.id} connected`)
+        players.push(player)
+        
+        room = roomToJoin
+    });
 
-    socket.on('start', () => {
+    socket.on('join', function(roomToJoin) {
+
+        playersInRoom = retievePlayersInRoom(roomToJoin)
+
+
+        if (tooMuchPlayers(roomToJoin)) {
+            console.log('Sorry to many players')
+            socket.disconnect()
+            console.log('Disconnected...')
+            return
+        }
+
+        socket.join(roomToJoin);
+        console.log(`There is ${playersInRoom} players`)
+        console.log(io.sockets.adapter.rooms[roomToJoin].length)
+
+
+
+        socket.emit('player-info', player)
+        console.log(`Player ${player.id} connected`)
+        players.push(player)
+
+        room = roomToJoin
+    });
+
+    socket.on('start', () => {        
+        if (notEnoughPlayers(room)){
+            console.log('Sorry not enough players')
+            return
+        }
+        
         let playerNumber = players.length
 
         const rule = rules.filter(r => r.playerNumber === playerNumber)[0]
 
         computeInitialData(playerNumber, rule)
 
-        console.log(players)
-
         let gameData = retrieveDataGame(gameWireCards)
         emitPlayersInformations(socket, gameData.players);
 
-        socket.in('room').emit('init-game', gameData)
+        console.table(players)
+
+        socket.in(room).emit('init-game', gameData)
         socket.emit('init-game', gameData)
     })
 
     socket.on('card-flip', (choice) => {
         const {currentPlayer, nextPlayer: selectedPlayer, cardId} = choice
-        socket.to('room').emit('card-flipped', cardId)
+        socket.to(room).emit('card-flipped', cardId)
 
         if (defusingWiresIds.includes(cardId)) incrementNumberOfDefusingWiresFound()
 
@@ -120,7 +171,7 @@ io.on('connection', (socket) => {
             protectedPlayerId: (previousProtectedPlayer) ? previousProtectedPlayer.id : currentPlayer
         }
         
-        console.log(dataForNextRound)
+        console.table(dataForNextRound)
         
 
         setTimeout(checkForNextRound, 800, socket, dataForNextRound)
@@ -130,13 +181,14 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`Player ${socket.id} disconnected`)
         players.splice(players.indexOf(player), 1)
+        socket.leave(room)
     })
 
 
 })
 
 function emitPlayersInformations(socket, players) {
-    socket.in('room').emit('all-player-info', players)
+    socket.in(room).emit('all-player-info', players)
     socket.emit('all-player-info', players)
 }
 
@@ -196,7 +248,7 @@ function checkForNextRound(socket, dataForNextRound) {
     let cardId = dataForNextRound.cardId
     if (gameIsOver(cardId)) {
         console.log(cardId)
-        socket.in('room').emit('game-over', bombId)
+        socket.in(room).emit('game-over', bombId)
         socket.emit('game-over', bombId)
         return
     }
@@ -204,13 +256,13 @@ function checkForNextRound(socket, dataForNextRound) {
     wireCardsFlipped.push(cardId)
     gameWireCards = gameWireCards.filter(wire => wire.id !== cardId)
 
-    socket.in('room').emit('next-player-turn', dataForNextRound)
+    socket.in(room).emit('next-player-turn', dataForNextRound)
     socket.emit('next-player-turn', dataForNextRound)
 
     if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
         wireCardsFlipped = []
         let gameData = retrieveDataGame(gameWireCards)
-        socket.in('room').emit('init-game', gameData)
+        socket.in(room).emit('init-game', gameData)
         socket.emit('init-game', gameData)
     }
 }
@@ -297,8 +349,8 @@ function shuffle(a) {
 }
 
 function gameIsOver(cardId) {
-    // return isBomb(cardId) || bombDefused();
-    return bombDefused();
+    return isBomb(cardId) || bombDefused();
+    // return bombDefused();
 }
 
 function isBomb(cardId) {

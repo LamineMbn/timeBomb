@@ -29,12 +29,6 @@ let rules = [
         blue: 3,
         red: 2,
         safeWire: 15
-    },
-    {
-        playerNumber: 2,
-        blue: 3,
-        red: 2,
-        safeWire: 8
     }
 ]
 

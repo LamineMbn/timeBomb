@@ -4,15 +4,75 @@
     <meta charset="utf-8">
     <title>Time Bomb</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js" charset="utf-8"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Montserrat&display=swap" rel="stylesheet">
+    <!--    <script src="app.js" charset="utf-8"></script>-->
 </head>
 <body>
-<button id="start">Start Game</button>
 
-<div class="container">
-    <div class="layout"></div>
+<script>
+    // document.addEventListener('DOMContentLoaded', () => {
+    //     let room = window.location.pathname.substr(1);
+    //     console.log(room)
+    //     const section = document.querySelector('.playerform');
+    //     const div = document.createElement('div');
+    //     const a = document.createElement('a');
+    //     a.classList.add('btn', 'splash-btn')
+    //     div.appendChild(a)
+    //     section.appendChild(div)
+    //     if (room) {
+    //         a.textContent = 'Join Room'
+    //         a.addEventListener('click', joinRoom)
+    //     } else {
+    //         a.textContent = 'Create Room'
+    //         a.addEventListener('click', createRoom)
+    //     }
+    //
+    //     function createRoom() {
+    //         window.location = uuidv4();
+    //     }
+    //
+    //     function joinRoom() {
+    //         window.location = room;
+    //     }
+    //
+    //     function uuidv4() {
+    //         let dt = new Date().getTime();
+    //         let uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    //             var r = (dt + Math.random() * 16) % 16 | 0;
+    //             dt = Math.floor(dt / 16);
+    //             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    //         });
+    //         return uuid;
+    //     }
+    // })
+    function createRoom() {
+        window.location = uuidv4();
+    }
+
+    function uuidv4(){
+        let dt = new Date().getTime();
+        let uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = (dt + Math.random()*16)%16 | 0;
+            dt = Math.floor(dt/16);
+            return (c==='x' ? r :(r&0x3|0x8)).toString(16);
+        });
+        return uuid;
+    }
+</script>
+
+<div class="splash-container">
+    <img class="timeBombImage" src="img/timebomb.png"/>
+
+    <section class="playerform">
+        <div class="formfield">
+            <label for="nickname-input" class="nicknameLabel">Nickname</label>
+            <input id="nickname-input" placeholder="Enter your nickname" type="text" class="jsx-3445529935" value=""
+                   autocomplete="off">
+        </div>
+        <div>
+            <a onclick="createRoom()" class="btn splash-btn">Create Room</a>
+        </div>
+    </section>
 </div>
 
 </body>

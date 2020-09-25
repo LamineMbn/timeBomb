@@ -36,7 +36,6 @@ let bombId = ""
 let defusingWiresIds = []
 let defusingWiresFound = 0
 
-// TODO highlight undiscovered defusing cable when game is over
 
 let Entity = function () {
     let self = {
@@ -248,8 +247,12 @@ function checkForNextRound(socket, dataForNextRound) {
     let cardId = dataForNextRound.cardId
     if (gameIsOver(cardId)) {
         console.log(cardId)
-        socket.in(room).emit('game-over', bombId)
-        socket.emit('game-over', bombId)
+        let remainingCards = {
+            bombId: bombId,
+            defusingWiresIds: defusingWiresIds
+        }
+        socket.in(room).emit('game-over', remainingCards)
+        socket.emit('game-over', remainingCards)
         return
     }
 

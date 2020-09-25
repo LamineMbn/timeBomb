@@ -64,15 +64,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if(isCurrentPlayerTurn(nextPlayerId)) addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, nextPlayerId);
     })
 
-    socket.on('game-over', (bombId) => {
-        let bomb = document.getElementById(`${bombId}`)
-        bomb.classList.add('bomb')
-
+    socket.on('game-over', (remainingCards) => {
+        let bombId = remainingCards.bombId
+        let defusingWiresIds = remainingCards.defusingWiresIds
+        
         let cards = document.querySelectorAll(`.card`)
 
         setTimeout(function () {
             cards.forEach(card => flipCard(card))
         }, 500)
+        setTimeout(function () {
+            let bomb = document.getElementById(`${bombId}`)
+            bomb.classList.add('bomb')
+
+            defusingWiresIds.forEach(defusingWireId => {
+                let defusingCard = document.getElementById(`${defusingWireId}`)
+                if (defusingCard) defusingCard.classList.add('defusingCard')
+            })
+        }, 700)
 
     })
 

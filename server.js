@@ -8,6 +8,9 @@ const server = http.createServer(app)
 const {v4: uuidv4} = require('uuid');
 const _ = require('lodash')
 
+const Wire = require('./model/Wire')
+const Player = require('./model/Player')
+
 const io = socketIo(server)
 
 app.use(express.static(path.join(__dirname, "/client")))
@@ -37,54 +40,18 @@ let defusingWiresIds = []
 let defusingWiresFound = 0
 
 
-let Entity = function () {
-    let self = {
-        id: "",
-        role: {},
-        hand: []
-    }
-    return self;
-}
-
-
-let Player = (id) => {
-    let self = new Entity()
-
-    self.id = id
-    self.name = ""
-    self.turn = false
-    self.protected = false
-
-    self.addRole = (role) => {
-        self.role = role
-    }
-
-    return self
-}
-
-let Wire = (type, img) => {
-    let self = {}
-
-    self.type = type
-    self.img = img
-    self.id = uuidv4()
-
-    return self
-}
-
-
 function notEnoughPlayers(room){
-    return retievePlayersInRoom(room) < minPlayerNumber
+    return retrievePlayersInRoom(room) < minPlayerNumber
 }
 
 function tooMuchPlayers(room){
-    return retievePlayersInRoom(room) > maxPlayerNumber
+    return retrievePlayersInRoom(room) > maxPlayerNumber
 }
 
 let room = ""
 
 
-function retievePlayersInRoom(roomToJoin) {
+function retrievePlayersInRoom(roomToJoin) {
     return io.sockets.adapter.rooms[roomToJoin] ? io.sockets.adapter.rooms[roomToJoin].length : 0;
 }
 
@@ -96,8 +63,6 @@ io.on('connection', (socket) => {
 
         socket.join(roomToJoin);
         
-        
-        
         socket.emit('player-info', player)
         console.log(`Player ${player.id} connected`)
         players.push(player)
@@ -107,8 +72,7 @@ io.on('connection', (socket) => {
 
     socket.on('join', function(roomToJoin) {
 
-        playersInRoom = retievePlayersInRoom(roomToJoin)
-
+        playersInRoom = retrievePlayersInRoom(roomToJoin)
 
         if (tooMuchPlayers(roomToJoin)) {
             console.log('Sorry to many players')

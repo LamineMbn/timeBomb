@@ -5,7 +5,6 @@ const PORT = process.env.PORT || 9876
 const socketIo = require('socket.io')
 const app = express()
 const server = http.createServer(app)
-const {v4: uuidv4} = require('uuid');
 const _ = require('lodash')
 
 const Wire = require('./model/Wire')

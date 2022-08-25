@@ -34,9 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
 
-    socket.on('card-flipped', cardId => {
-        let card = document.getElementById(`${cardId}`)
-        flipCard(card)
+    socket.on('card-flipped', wire => {
+        flipCard(wire)
     })
 
     socket.on('next-player-turn', dataForNextRound => {
@@ -65,13 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     socket.on('game-over', (remainingCards) => {
+        let allCards = remainingCards.allCards
         let bombId = remainingCards.bombId
         let defusingWiresIds = remainingCards.defusingWiresIds
         
-        let cards = document.querySelectorAll(`.card`)
-
         setTimeout(function () {
-            cards.forEach(card => flipCard(card))
+            allCards.forEach(card => flipCard(card))
         }, 500)
         setTimeout(function () {
             let bomb = document.getElementById(`${bombId}`)
@@ -84,6 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 700)
 
     })
+    
+    function addCardImageToDom(parentDiv, cardData) {
+        const existingCardImage = parentDiv.querySelector('.wireImg')
+        if(!existingCardImage) {
+            const cardImage = createBasicImageWithSourceAndCss('/' + cardData.img, 'wireImg');
+            parentDiv.appendChild(cardImage)
+        }
+    }
 
     function addEventListenerOnCardsForNextPlayer(cards, previousPlayerId, currentPlayerId) {
         cards.filter(previousAndCurrentPlayerCards(previousPlayerId, currentPlayerId))
@@ -139,15 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const playerDiv = createBasicDivWithCssClass('player');
             playerDiv.id = player.id
 
-            // let radius = '30em', //distance from center
-            //     start = -90, //shift start from 0
-            //     slice = 360 / players.length,
-            //     rotate = slice * i + start,
-            //     rotateReverse = rotate * -1;
-            //
-            // playerDiv.style.transform = 'rotate(' + rotate + 'deg) translate(' + radius + ') rotate(' + rotateReverse + 'deg)'
-            // i++
-
             // Player Role
             const playerRole = createPlayerRoleInDOM(player);
 
@@ -199,16 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const playerHand = createBasicDivWithCssClass('player-hand');
 
         for (let j = 0; j < wiresForCurrentPlayer.length; j++) {
-            const wire = createBasicImageWithSourceAndCss('/' + wiresForCurrentPlayer[j].img, 'wireImg');
+            // const wire = createBasicImageWithSourceAndCss('/' + wiresForCurrentPlayer[j].img, 'wireImg');
 
             const card = createBasicDivWithCssClass('card');
             card.id = wiresForCurrentPlayer[j].id
 
-
             const backCard = createBasicDivWithCssClass('card-back');
 
             const frontCard = createBasicDivWithCssClass('card-front');
-            frontCard.appendChild(wire)
+            // frontCard.appendChild(wire)
 
             card.appendChild(backCard)
             card.appendChild(frontCard)
@@ -233,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function flipCardListener(event) {
         let card = event.target.parentElement
-        flipCard(card)
+        // flipCard(card)
 
         let choice = {
             currentPlayer: currentPlayer.id,
@@ -246,8 +242,11 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('card-flip', choice)
     }
 
-    function flipCard(card) {
+    function flipCard(wire) {
+        console.log(wire)
+        let card = document.getElementById(`${wire.id}`)
         if (!card.classList.contains('flip')) {
+            addCardImageToDom(card.lastChild, wire)
             card.classList.toggle('flip')
             card.style.cursor = 'default';
         }

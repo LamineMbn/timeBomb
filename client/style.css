@@ -134,7 +134,8 @@ body {
   background-color: #63873e; }
 
 .protection {
-  display: none; }
+  display: none; 
+}
 
 .protection.active {
   display: flex;
@@ -176,6 +177,10 @@ body {
   -o-transform: rotateY(180deg);
   transform: rotateY(180deg); }
 
+.card-front.hidden {
+  display: none;
+}
+
 .card div {
   display: block;
   height: 100%;
@@ -200,7 +205,8 @@ body {
   border-radius: 5%; }
 
 .wireImg.hidden {
-  display: none; }
+  display: none; 
+}
 
 .bomb {
   box-shadow: 0 0 5px #51cbee;

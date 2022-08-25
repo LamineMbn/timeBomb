@@ -34,7 +34,8 @@ const players = []
 let gameWireCards = []
 let shuffledRoleCards = {}
 let wireCardsFlipped = []
-let bombId = ""
+let bombCard = Wire()
+let defusingWireCards = []
 let defusingWiresIds = []
 let defusingWiresFound = 0
 
@@ -116,7 +117,9 @@ io.on('connection', (socket) => {
 
     socket.on('card-flip', (choice) => {
         const {currentPlayer, nextPlayer: selectedPlayer, cardId} = choice
-        socket.to(room).emit('card-flipped', cardId)
+        const wire = retrieveWireById(cardId)
+        socket.to(room).emit('card-flipped', wire)
+        socket.emit('card-flipped', wire)
 
         if (defusingWiresIds.includes(cardId)) incrementNumberOfDefusingWiresFound()
 
@@ -138,6 +141,12 @@ io.on('connection', (socket) => {
 
         setTimeout(checkForNextRound, 800, socket, dataForNextRound)
 
+    })
+
+    socket.on('wire-image', (wireId) => {
+        console.log(`Get wire image for id ${wireId}`)
+        const wireImage = retrieveWireById(wireId)
+        socket.to(room).emit('wire-image', wireImage)
     })
 
     socket.on('disconnect', () => {
@@ -165,11 +174,16 @@ function computeInitialData(playerNumber, rule) {
 
     gameWireCards = retrieveWires(rule, playerNumber)
 
-    bombId = retrieveBombId(gameWireCards)
-    console.log(bombId)
+    bombCard = retrieveBombCard(gameWireCards)
+    console.log(bombCard)
 
-    defusingWiresIds = retrieveDefusingWiresId(gameWireCards)
+    defusingWireCards = retrieveDefusingWireCards(gameWireCards)
+    defusingWiresIds = defusingWireCards.map(wire => wire.id)
 
+}
+
+function retrieveWireById(wireId) {
+    return gameWireCards.filter(wire => wire.id === wireId)[0]
 }
 
 function switchPlayers(currentPlayerId, nextPlayerId) {
@@ -211,7 +225,8 @@ function checkForNextRound(socket, dataForNextRound) {
     if (gameIsOver(cardId)) {
         console.log(cardId)
         let remainingCards = {
-            bombId: bombId,
+            allCards: gameWireCards,
+            bombId: bombCard.id,
             defusingWiresIds: defusingWiresIds
         }
         socket.in(room).emit('game-over', remainingCards)
@@ -273,12 +288,12 @@ function retrieveWiresByType(wires, type) {
     return wires.filter(wire => wire.type === type)
 }
 
-function retrieveBombId(wires) {
-    return retrieveWiresByType(wires, 'bomb')[0].id
+function retrieveBombCard(wires) {
+    return retrieveWiresByType(wires, 'bomb')[0]
 }
 
-function retrieveDefusingWiresId(wires) {
-    return retrieveWiresByType(wires, 'defuse').map(defuse => defuse.id)
+function retrieveDefusingWireCards(wires) {
+    return retrieveWiresByType(wires, 'defuse')
 }
 
 function retrieveWiresPerPlayer(pWires) {
@@ -320,10 +335,10 @@ function gameIsOver(cardId) {
 }
 
 function isBomb(cardId) {
-    return cardId === bombId
+    return cardId === bombCard.id
 }
 
 function bombDefused() {
-    console.log(`${defusingWiresFound}/${defusingWiresIds.length} wires found`)
-    return defusingWiresFound === defusingWiresIds.length
+    console.log(`${defusingWiresFound}/${defusingWireCards.length} wires found`)
+    return defusingWiresFound === defusingWireCards.length
 }

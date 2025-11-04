@@ -39,6 +39,17 @@ let defusingWireCards = []
 let defusingWiresIds = []
 let defusingWiresFound = 0
 
+// Session management
+const sessionPlayers = new Map() // Maps sessionId -> player object
+const socketToSession = new Map() // Maps socket.id -> sessionId
+let gameStarted = false
+const flippedCardsHistory = [] // Track all flipped cards for reconnection
+
+// Generate unique session ID
+function generateSessionId() {
+    return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now()
+}
+
 
 function notEnoughPlayers(room){
     return retrievePlayersInRoom(room) < minPlayerNumber
@@ -57,16 +68,63 @@ function retrievePlayersInRoom(roomToJoin) {
 
 io.on('connection', (socket) => {
 
-    let player = Player(socket.id)
-    
-    socket.on('create', function(roomToJoin) {
+    let player = null
+    let sessionId = null
+
+    socket.on('create', function(data) {
+        const roomToJoin = typeof data === 'string' ? data : data.room
+        const existingSessionId = typeof data === 'object' ? data.sessionId : null
+
+        // Check if player is reconnecting with existing session
+        if (existingSessionId && sessionPlayers.has(existingSessionId)) {
+            // Reconnection: reuse existing player
+            sessionId = existingSessionId
+            player = sessionPlayers.get(sessionId)
+
+            // Update player's socket ID
+            const oldSocketId = player.id
+            player.id = socket.id
+
+            // Update socket mapping
+            socketToSession.set(socket.id, sessionId)
+
+            console.log(`Player reconnected: ${sessionId} (old socket: ${oldSocketId}, new socket: ${socket.id})`)
+
+            // Update player in players array
+            const playerIndex = players.findIndex(p => p.id === oldSocketId)
+            if (playerIndex !== -1) {
+                players[playerIndex] = player
+            }
+        } else {
+            // New connection: create new player and session
+            sessionId = generateSessionId()
+            player = Player(socket.id)
+
+            sessionPlayers.set(sessionId, player)
+            socketToSession.set(socket.id, sessionId)
+
+            console.log(`New player connected: ${sessionId} (socket: ${socket.id})`)
+            players.push(player)
+        }
 
         socket.join(roomToJoin);
-        
-        socket.emit('player-info', player)
-        console.log(`Player ${player.id} connected`)
-        players.push(player)
-        
+
+        // Send player info with session ID
+        socket.emit('player-info', { player, sessionId })
+
+        // If game already started, send current game state
+        if (gameStarted && players.length > 0) {
+            const gameData = retrieveDataGame(gameWireCards)
+            socket.emit('init-game', gameData)
+            socket.emit('all-player-info', players)
+
+            // Send all previously flipped cards for reconnection
+            if (flippedCardsHistory.length > 0) {
+                console.log('Sending flipped cards history:', flippedCardsHistory.length, 'cards')
+                socket.emit('restore-flipped-cards', flippedCardsHistory)
+            }
+        }
+
         room = roomToJoin
     });
 
@@ -94,12 +152,12 @@ io.on('connection', (socket) => {
         room = roomToJoin
     });
 
-    socket.on('start', () => {        
+    socket.on('start', () => {
         if (notEnoughPlayers(room)){
             console.log('Sorry not enough players')
             return
         }
-        
+
         let playerNumber = players.length
 
         const rule = rules.filter(r => r.playerNumber === playerNumber)[0]
@@ -111,6 +169,8 @@ io.on('connection', (socket) => {
 
         console.table(players)
 
+        gameStarted = true // Mark game as started
+
         socket.in(room).emit('init-game', gameData)
         socket.emit('init-game', gameData)
     })
@@ -121,23 +181,26 @@ io.on('connection', (socket) => {
         socket.to(room).emit('card-flipped', wire)
         socket.emit('card-flipped', wire)
 
+        // Track flipped card for reconnection
+        flippedCardsHistory.push(wire)
+
         if (defusingWiresIds.includes(cardId)) incrementNumberOfDefusingWiresFound()
 
         let previousProtectedPlayer = players.filter(player => player.protected)[0]
-        
+
         switchPlayers(currentPlayer, selectedPlayer)
-        
+
         emitPlayersInformations(socket, players)
-        
+
         let dataForNextRound = {
             previousPlayerId : currentPlayer,
             nextPlayerId : selectedPlayer,
             cardId: cardId,
             protectedPlayerId: (previousProtectedPlayer) ? previousProtectedPlayer.id : currentPlayer
         }
-        
+
         console.table(dataForNextRound)
-        
+
 
         setTimeout(checkForNextRound, 800, socket, dataForNextRound)
 
@@ -151,7 +214,14 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`Player ${socket.id} disconnected`)
-        players.splice(players.indexOf(player), 1)
+
+        // Don't remove from players array or sessionPlayers map
+        // This allows reconnection with the same session
+        // Only remove socket mapping
+        if (sessionId) {
+            console.log(`Session ${sessionId} will persist for reconnection`)
+        }
+
         socket.leave(room)
     })
 
@@ -169,6 +239,7 @@ function computeInitialData(playerNumber, rule) {
     selectStartingPlayerRandomly()
 
     defusingWiresFound = 0
+    flippedCardsHistory.length = 0 // Clear flipped cards history for new game
 
     shuffledRoleCards = retrieveShuffledRoleCards(rule);
 
@@ -242,6 +313,7 @@ function checkForNextRound(socket, dataForNextRound) {
 
     if ((wireCardsFlipped.length === players.length) && (gameWireCards.length > players.length)) {
         wireCardsFlipped = []
+        flippedCardsHistory.length = 0 // Clear history for new round
         let gameData = retrieveDataGame(gameWireCards)
         socket.in(room).emit('init-game', gameData)
         socket.emit('init-game', gameData)
@@ -255,10 +327,13 @@ function incrementNumberOfDefusingWiresFound() {
 function retrieveDataGame(gameWireCards) {
     const wiresPerPlayers = retrieveWiresPerPlayer(gameWireCards);
 
-
     for (let i = 0; i < players.length; i++) {
         players[i].role = shuffledRoleCards[i]
-        players[i].hand = wiresPerPlayers[i]
+        // Only assign new hand if player doesn't have one yet
+        // This preserves hands during reconnection
+        if (!players[i].hand || players[i].hand.length === 0) {
+            players[i].hand = wiresPerPlayers[i]
+        }
     }
 
     return {players: players}

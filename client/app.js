@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const table = document.querySelector('.layout');
     const startButton = document.querySelector('#start')
     let currentPlayer = {}
+    let sessionId = null
 
     // const playerNumber = 4;
     // const defusingWireNumber = playerNumber
@@ -12,8 +13,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let room  =  window.location.pathname.substr(1);
     console.log(room)
 
+    // Get session ID from localStorage
+    const STORAGE_KEY = 'timebomb_session_' + room
+    sessionId = localStorage.getItem(STORAGE_KEY)
+
+    if (sessionId) {
+        console.log('Found existing session:', sessionId)
+    } else {
+        console.log('No existing session found, will create new one')
+    }
+
     socket.on('connect', function() {
-        socket.emit('create', room);
+        // Send session ID if exists
+        socket.emit('create', {
+            room: room,
+            sessionId: sessionId
+        });
     });
     
 
@@ -25,8 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
         initGame(gameData)
     })
 
-    socket.on('player-info', player => {
-        currentPlayer = player
+    socket.on('player-info', data => {
+        // Handle both old format (just player) and new format (player + sessionId)
+        if (data.player && data.sessionId) {
+            currentPlayer = data.player
+            sessionId = data.sessionId
+
+            // Store session ID in localStorage
+            localStorage.setItem(STORAGE_KEY, sessionId)
+            console.log('Session ID saved:', sessionId)
+        } else {
+            // Fallback for old format
+            currentPlayer = data
+        }
     })
 
     socket.on('all-player-info', players => {
@@ -67,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let allCards = remainingCards.allCards
         let bombId = remainingCards.bombId
         let defusingWiresIds = remainingCards.defusingWiresIds
-        
+
         setTimeout(function () {
             allCards.forEach(card => flipCard(card))
         }, 500)
@@ -81,6 +107,19 @@ document.addEventListener('DOMContentLoaded', () => {
             })
         }, 700)
 
+    })
+
+    socket.on('restore-flipped-cards', (flippedCards) => {
+        console.log('Restoring', flippedCards.length, 'flipped cards')
+        // Give the DOM a moment to be ready after init-game
+        setTimeout(() => {
+            flippedCards.forEach(wire => {
+                const card = document.getElementById(wire.id)
+                if (card && !card.classList.contains('flip')) {
+                    flipCard(wire)
+                }
+            })
+        }, 100)
     })
     
     function addCardImageToDom(parentDiv, cardData) {

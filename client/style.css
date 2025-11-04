@@ -1,7 +1,9 @@
 body {
   margin: 0;
-  background-color: #F3F3F3;
-  overflow-x: hidden; }
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+  min-height: 100vh; }
 
 *, *::before, *::after {
   font-family: 'Montserrat', sans-serif;
@@ -50,28 +52,46 @@ body {
   position: relative;
   padding: 0.4rem 1rem 0.3rem;
   margin: 0.2rem;
-  color: black;
+  color: #1a1a2e;
   font-size: 1rem;
+  font-weight: bold;
   border-radius: 1rem;
-  background-color: #ffe400;
-  box-shadow: rgba(0, 0, 0, 0.5) 0.2rem 0.2rem 1px 0px;
+  background: linear-gradient(135deg, #ffe400 0%, #ffed4e 50%, #ffe400 100%);
+  box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.3);
   border-top: 2px solid #fff6a7;
   border-bottom: 2px solid #f3bb00;
   cursor: pointer;
   user-select: none;
   outline: none;
   text-decoration: none;
-  transition: all 200ms ease 0s; }
+  transition: all 200ms ease 0s;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem; }
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.6rem 1.5rem rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 228, 0, 0.5); }
 
 .btn:active {
   top: 0.1rem;
-  box-shadow: rgba(0, 0, 0, 0.5) 0px 0px 1px 0px; }
+  transform: translateY(0);
+  box-shadow: 0 0.2rem 0.5rem rgba(0, 0, 0, 0.3); }
+
+#start {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 0.8rem 2rem;
+  font-size: 1.2rem; }
 
 .container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  width: 100%; }
+  width: 100%;
+  padding-top: 5rem; }
 
 .layout {
   justify-content: center;
@@ -94,18 +114,34 @@ body {
   position: relative;
   margin: 2vmin;
   display: flex;
-  /* flex-direction: row; */
   justify-content: space-between;
-  /* background-size: 100%; */
-  /* align-items: flex-start; */
   width: 100%;
-  height: 54vmin; }
+  height: 54vmin;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1.5vmin;
+  padding: 1.5vmin;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
 
 .current-player {
-  box-shadow: 0 0 5px #51cbee;
+  box-shadow: 0 0 30px rgba(81, 203, 238, 0.8), 0 0 60px rgba(81, 203, 238, 0.4), inset 0 0 20px rgba(81, 203, 238, 0.1);
   padding: 3px 0px 3px 3px;
-  border: 5px solid #51cbee;
-  order: -1; }
+  border: 4px solid #51cbee;
+  order: -1;
+  background: rgba(81, 203, 238, 0.1);
+  transform: scale(1.02);
+  animation: currentPlayerPulse 2s ease-in-out infinite; }
+
+@keyframes currentPlayerPulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(81, 203, 238, 0.8), 0 0 60px rgba(81, 203, 238, 0.4), inset 0 0 20px rgba(81, 203, 238, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(81, 203, 238, 1), 0 0 80px rgba(81, 203, 238, 0.6), inset 0 0 30px rgba(81, 203, 238, 0.2);
+  }
+}
 
 .player-role {
   display: flex;
@@ -113,11 +149,20 @@ body {
   justify-content: flex-start;
   height: 100%;
   max-width: 48vmin;
-  width: 48vmin; }
+  width: 48vmin;
+  border-radius: 1vmin;
+  overflow: hidden;
+  box-shadow: 0 0.5vmin 2vmin 0 rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease, box-shadow 0.3s ease; }
+
+.player-role:hover {
+  transform: scale(1.02);
+  box-shadow: 0 1vmin 3vmin 0 rgba(0, 0, 0, 0.6); }
 
 .player-role > img {
   width: 100%;
-  height: 100%; }
+  height: 100%;
+  object-fit: cover; }
 
 .miscCard {
   display: flex;
@@ -129,12 +174,60 @@ body {
 
 .wireCutter.active {
   display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
-  background-color: #63873e; }
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+  border-radius: 1vmin;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.3);
+  animation: turnIndicatorPulse 1.5s ease-in-out infinite;
+  font-weight: bold;
+  font-size: 2vmin;
+  color: #1a1a2e;
+  text-transform: uppercase;
+  letter-spacing: 0.2vmin;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
+
+.wireCutter.active::before {
+  content: "YOUR TURN";
+  z-index: 1;
+  position: relative; }
+
+.wireCutter.active::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  animation: turnIndicatorShine 3s linear infinite; }
+
+@keyframes turnIndicatorPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 215, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes turnIndicatorShine {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
 
 .protection {
-  display: none; 
+  display: none;
 }
 
 .protection.active {
@@ -144,38 +237,71 @@ body {
   background-image: url("img/shield.png");
   background-position: center;
   background-repeat: no-repeat;
-  background-size: contain; }
+  background-size: contain;
+  filter: drop-shadow(0 0 10px rgba(81, 203, 238, 0.8));
+  animation: protectionPulse 2s ease-in-out infinite; }
+
+@keyframes protectionPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(81, 203, 238, 0.8));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(81, 203, 238, 1));
+    transform: scale(1.05);
+  }
+}
 
 .card {
   display: flex;
   flex-wrap: wrap;
   width: 24vmin;
   height: 100%;
-  -webkit-transition: -webkit-transform 1s;
-  -moz-transition: -moz-transform 1s;
-  -o-transition: -o-transform 1s;
-  transition: transform 1s;
+  -webkit-transition: -webkit-transform 1s, box-shadow 0.3s ease;
+  -moz-transition: -moz-transform 1s, box-shadow 0.3s ease;
+  -o-transition: -o-transform 1s, box-shadow 0.3s ease;
+  transition: transform 1s, box-shadow 0.3s ease, filter 0.3s ease;
   -webkit-transform-style: preserve-3d;
   -moz-transform-style: preserve-3d;
   -o-transform-style: preserve-3d;
   transform-style: preserve-3d;
-  -webkit-transform-origin: 50% 50%; }
+  -webkit-transform-origin: 50% 50%;
+  cursor: default; }
 
 .pointer {
   cursor: url("/img/wire_cutter_cursor.png"), auto; }
 
+.card.pointer:hover {
+  transform: translateY(-2vmin) scale(1.05);
+  filter: brightness(1.2); }
+
 .card-back {
-  background-color: #964d24;
+  background: linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #8b4513 100%);
   padding: 1.1vmin;
   background-clip: content-box;
-  box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75); }
+  box-shadow: 0 0.5vmin 2vmin 0 rgba(0, 0, 0, 0.6);
+  border: 0.3vmin solid #654321;
+  position: relative; }
+
+.card-back::before {
+  content: "";
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  right: 10%;
+  bottom: 10%;
+  border: 0.2vmin solid rgba(139, 69, 19, 0.5);
+  border-radius: 2vmin;
+  pointer-events: none; }
 
 .card-front {
-  background-color: red;
+  background: linear-gradient(135deg, #cc0000 0%, #ff1a1a 50%, #cc0000 100%);
   -webkit-transform: rotateY(180deg);
   -moz-transform: rotateY(180deg);
   -o-transform: rotateY(180deg);
-  transform: rotateY(180deg); }
+  transform: rotateY(180deg);
+  border: 0.3vmin solid #990000;
+  box-shadow: inset 0 0 2vmin rgba(0, 0, 0, 0.3); }
 
 .card-front.hidden {
   display: none;
@@ -209,9 +335,31 @@ body {
 }
 
 .bomb {
-  box-shadow: 0 0 5px #51cbee;
-  border: 8px solid red; }
+  box-shadow: 0 0 30px rgba(255, 0, 0, 1), 0 0 60px rgba(255, 0, 0, 0.8), inset 0 0 20px rgba(255, 0, 0, 0.3);
+  border: 8px solid #ff0000;
+  animation: bombPulse 1s ease-in-out infinite;
+  transform: scale(1.1); }
+
+@keyframes bombPulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(255, 0, 0, 1), 0 0 60px rgba(255, 0, 0, 0.8), inset 0 0 20px rgba(255, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(255, 0, 0, 1), 0 0 100px rgba(255, 0, 0, 1), inset 0 0 30px rgba(255, 0, 0, 0.5);
+  }
+}
 
 .defusingCard {
-  box-shadow: 0 0 5px #51cbee;
-  border: 8px solid green; }
+  box-shadow: 0 0 30px rgba(0, 255, 0, 1), 0 0 60px rgba(0, 255, 0, 0.8), inset 0 0 20px rgba(0, 255, 0, 0.3);
+  border: 8px solid #00ff00;
+  animation: defusePulse 1s ease-in-out infinite;
+  transform: scale(1.05); }
+
+@keyframes defusePulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(0, 255, 0, 1), 0 0 60px rgba(0, 255, 0, 0.8), inset 0 0 20px rgba(0, 255, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(0, 255, 0, 1), 0 0 100px rgba(0, 255, 0, 1), inset 0 0 30px rgba(0, 255, 0, 0.5);
+  }
+}
